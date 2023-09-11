@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
 import scala.tools.asm.ClassWriter
 import scala.tools.asm.tree.ClassNode
+import dotty.tools.backend.jvm.opt.*
 
 /**
  * Implements late stages of the backend that don't depend on a Global instance, i.e.,
@@ -17,6 +18,14 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
   import bTypes.*
   import frontendAccess.{backendReporting, compilerSettings}
   import int.given
+
+  val byteCodeRepository  : ByteCodeRepository  { val postProcessor: self.type } = new ByteCodeRepository  { val postProcessor: self.type = self }
+  val localOpt            : LocalOpt            { val postProcessor: self.type } = new LocalOpt            { val postProcessor: self.type = self }
+  val inliner             : Inliner             { val postProcessor: self.type } = new Inliner             { val postProcessor: self.type = self }
+  val inlinerHeuristics   : InlinerHeuristics   { val postProcessor: self.type } = new InlinerHeuristics   { val postProcessor: self.type = self }
+  val closureOptimizer    : ClosureOptimizer    { val postProcessor: self.type } = new ClosureOptimizer    { val postProcessor: self.type = self }
+  val callGraph           : CallGraph           { val postProcessor: self.type } = new CallGraph           { val postProcessor: self.type = self }
+  val bTypesFromClassfile : BTypesFromClassfile { val postProcessor: self.type } = new BTypesFromClassfile { val postProcessor: self.type = self }
 
   val backendUtils = new BackendUtils(this)
   val classfileWriter  = ClassfileWriter(frontendAccess)
