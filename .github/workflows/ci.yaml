@@ -70,13 +70,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -121,13 +121,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -164,7 +164,7 @@ jobs:
         shell: cmd
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Test
         run: sbt ";scala3-bootstrapped/compile"
@@ -206,7 +206,7 @@ jobs:
         shell: cmd
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Test
         run: sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test"
@@ -243,13 +243,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -291,13 +291,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -340,13 +340,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -389,13 +389,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -436,13 +436,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -483,13 +483,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -527,13 +527,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -581,13 +581,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -631,13 +631,13 @@ jobs:
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -704,7 +704,7 @@ jobs:
     if: "failure() && github.event_name == 'schedule'"
     steps:
       - name: Checkout issue template
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Open an issue
         uses: JasonEtco/create-an-issue@v2
