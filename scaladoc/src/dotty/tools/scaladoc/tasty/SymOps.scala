@@ -58,19 +58,18 @@ object SymOps:
       import VisibilityScope._
 
       def explicitScope(ownerType: TypeRepr): VisibilityScope =
-        val moduleSym = ownerType.typeSymbol.companionModule
-        if moduleSym.isNoSymbol
-          then ExplicitTypeScope(ownerType.typeSymbol.name)
-          else ExplicitModuleScope(moduleSym.name)
+        val typeSym = ownerType.typeSymbol
+        if !typeSym.flags.is(Flags.Module)
+          then ExplicitTypeScope(typeSym.name)
+          else ExplicitModuleScope(typeSym.companionModule.name)
 
       def implicitScope(ownerSym: Symbol): VisibilityScope =
-        val moduleSym = ownerSym.companionModule
-        if moduleSym.isNoSymbol
+        if !ownerSym.flags.is(Flags.Module)
           then ImplicitTypeScope
           else ImplicitModuleScope
 
       val visibilityFlags = (sym.flags.is(Flags.Private), sym.flags.is(Flags.Protected), sym.flags.is(Flags.Local))
-      (sym.privateWithin, sym.protectedWithin, visibilityFlags) match
+      val res = (sym.privateWithin, sym.protectedWithin, visibilityFlags) match
         case (Some(owner), None, _) => Visibility.Private(explicitScope(owner))
         case (None, Some(owner), _) => Visibility.Protected(explicitScope(owner))
         case (None, None, (true, false, _)) => Visibility.Private(implicitScope(sym.owner))
@@ -79,6 +78,11 @@ object SymOps:
         case (None, None, (false, false, false)) => Visibility.Unrestricted
         case (None, None, (true, true, false)) => Visibility.Protected(ThisScope)
         case _ => throw new Exception(s"Visibility for symbol $sym cannot be determined")
+
+      val priv = sym.privateWithin.map(_.typeSymbol.fullName)
+      val prot = sym.protectedWithin.map(_.typeSymbol.fullName)
+      println(s"""{ symbol: "${ sym.fullName }", priv: "$priv", prot: "$prot", flags: , res: "$res" },""")
+      res
 
 
     // Order here determines order in documenation
