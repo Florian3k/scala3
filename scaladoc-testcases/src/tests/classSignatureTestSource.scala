@@ -27,6 +27,7 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
     sealed trait CaseImplementThis(id: Int)
 
     case class IAmACaseClass(x: T, id: Int) extends CaseImplementThis/*<-*/(id)/*->*/
+    //TODO: bug - case class IAmACaseClass(x: Documentation.this.T, id: Int) extends Documentation.this.CaseImplementThis
 
     case object IAmACaseObject extends CaseImplementThis/*<-*/(0)/*->*/
 
