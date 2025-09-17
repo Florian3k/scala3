@@ -535,6 +535,30 @@ class ClassfileParser(
     }
   }
 
+  class RecordUnapplyCompleter() extends LazyType {
+    override def complete(denot: SymDenotation)(using Context): Unit =
+      val recType = classRoot.typeRef
+      val tparams = classRoot.typeParams
+      val n = tparams.length
+      val unapplyMethodType =
+        if n > 0 then
+          val pnames = tparams.map(_.name)
+          PolyType(pnames)(
+            pt => /* TODO correct bounds */List.fill(n)(TypeBounds.empty),
+            pt =>
+              val appliedRecType = AppliedType(recType, pt.paramRefs)
+              MethodType(List(nme.x_0), List(appliedRecType), appliedRecType)
+          )
+        else
+          MethodType(List(nme.x_0), List(recType), recType)
+      
+      denot.info = unapplyMethodType
+      val sym = denot.symbol
+      val dd = DefDef(sym.asTerm, _.last.last).withAddedFlags(Flags.JavaDefined | Flags.SyntheticMethod | Flags.Inline)
+      sym.defTree = dd
+      inlines.PrepareInlineable.registerInlineInfo(sym, dd.rhs)
+  }
+
   def constantTagToType(tag: Int)(using Context): Type =
     (tag: @switch) match {
       case BYTE_TAG   => defn.ByteType
@@ -989,6 +1013,32 @@ class ClassfileParser(
             sym.owner.resetFlag(Flags.PureInterface)
             report.log(s"$sym in ${sym.owner} is a java 8+ default method.")
           }
+
+        case tpnme.RecordATTR =>
+          val components = List.fill(in.nextChar):
+            val name = pool.getName(in.nextChar).value
+            val _ = in.nextChar
+            skipAttributes()
+            name
+
+          classRoot.addAnnotation(
+            Annotation( 
+              defn.JavaRecordFieldsAnnot,
+              Typed(
+                SeqLiteral(components.map(field => Literal(Constant(field))), TypeTree(defn.StringType)),
+                TypeTree(defn.RepeatedParamType.appliedTo(defn.StringType))
+              ),
+              NoSpan
+            )
+          )
+          val completer = RecordUnapplyCompleter()
+          val member = newSymbol(
+            sym,
+            nme.unapply,
+            Flags.JavaDefined | Flags.SyntheticMethod | Flags.Inline,
+            completer,
+          )
+          staticScope.enter(member)
 
         case _ =>
       }
