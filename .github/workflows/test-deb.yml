@@ -1,0 +1,89 @@
+###################################################################################################
+###                  THIS IS A REUSABLE WORKFLOW TO TEST SCALA WITH DEB RUNNER                  ###
+### HOW TO USE:                                                                                 ###
+###  `version` is used only for the run-name label; the package is installed and                ###
+###  smoke-tested (its own version is not asserted).                                            ###
+### NOTE: Requires `scala.deb` artifact uploaded within the same run                            ###
+###                                                                                             ###
+###################################################################################################
+
+name: Test 'scala' Debian Package
+run-name: Test 'scala' (${{ inputs.version }}) Debian Package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # ============================= TEMPORARY =============================
+    # Multi-distro matrix to validate the JRE dependency logic across
+    # Debian/Ubuntu versions. To restore the normal test: delete this
+    # block and the `strategy:` / `container:` lines, then re-add `sudo`
+    # in the Install/Uninstall steps.
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - debian:12
+          - debian:13
+          - ubuntu:20.04
+          - ubuntu:22.04
+          - ubuntu:24.04
+    container: ${{ matrix.image }}
+    # ====================================================================
+    steps:
+      - name: Download deb artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: scala.deb
+          path: .
+
+      # === TEMPORARY: no `sudo` — inside a container we run as root (minimal images lack sudo) ===
+      - name: Install Scala Runner
+        run: |
+          apt-get update
+          apt-get install -y ./scala.deb
+      # - name: Install Scala Runner
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y ./scala.deb
+
+      - name: Verify installation layout
+        run: |
+          set -e
+          echo "Checking /usr/bin/scala symlink..."
+          test -L /usr/bin/scala
+          test "$(readlink -f /usr/bin/scala)" = /usr/share/scala3/bin/scala
+
+          echo "Checking VERSION file..."
+          test -f /usr/share/scala3/VERSION
+          cat /usr/share/scala3/VERSION
+
+          echo "Checking scala-cli launcher..."
+          test -x /usr/share/scala3/libexec/scala-cli
+
+          echo "Checking maven2 directory..."
+          test -d /usr/share/scala3/maven2
+
+      - name: Test Scala Runner
+        run: scala --version
+      - name: Test the `scalac` command
+        run: scalac --version
+      - name: Test the `scaladoc` command
+        run: scaladoc --version
+
+      - name: Smoke test - compile and run
+        run: |
+          echo '@main def test() = println("Hello from Scala")' > test.scala
+          scala run --server=false test.scala
+
+      # === TEMPORARY: no `sudo` (root in container) ===
+      - name: Uninstall the `scala` package
+        run: apt-get remove -y scala3
+      # - name: Uninstall the `scala` package
+      #   run: sudo apt-get remove -y scala3
