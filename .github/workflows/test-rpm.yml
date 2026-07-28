@@ -1,0 +1,103 @@
+###################################################################################################
+###                  THIS IS A REUSABLE WORKFLOW TO TEST SCALA WITH RPM RUNNER                  ###
+### HOW TO USE:                                                                                 ###
+###  `version` is used only for the run-name label; the package is installed and                ###
+###  smoke-tested (its own version is not asserted).                                            ###
+### NOTE:                                                                                        ###
+###   - Requires `scala.rpm` artifact uploaded within the same run                             ###
+###   - Runs in a Fedora container because `.rpm` install (dnf) needs an RPM-based distro       ###
+###                                                                                             ###
+###################################################################################################
+
+name: Test 'scala' RPM Package
+run-name: Test 'scala' (${{ inputs.version }}) RPM Package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # ============================= TEMPORARY =============================
+    # Multi-distro matrix to validate the JRE dependency logic across RPM
+    # distros. To restore the normal test: delete this block and the
+    # `strategy:` / `container: ${{ matrix.image }}` lines, then uncomment
+    # `container: fedora:latest` and revert the Install/Uninstall steps.
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - fedora:latest
+          - fedora:41
+          - almalinux:8
+          - almalinux:9
+          - almalinux:10
+          - opensuse/leap:15.6
+          - opensuse/tumbleweed
+    container: ${{ matrix.image }}
+    # ====================================================================
+    # container: fedora:latest
+    steps:
+      - name: Download rpm artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: scala.rpm
+          path: .
+
+      # === TEMPORARY: branch on the distro package manager (dnf: Fedora/RHEL, zypper: openSUSE) ===
+      - name: Install Scala Runner
+        run: |
+          if command -v dnf >/dev/null; then
+            dnf install -y ./scala.rpm
+          elif command -v zypper >/dev/null; then
+            zypper --non-interactive --gpg-auto-import-keys refresh
+            zypper --non-interactive install --allow-unsigned-rpm ./scala.rpm
+          else
+            echo "No supported package manager (dnf/zypper) found"; exit 1
+          fi
+      # - name: Install Scala Runner
+      #   run: dnf install -y ./scala.rpm
+
+      - name: Verify installation layout
+        run: |
+          set -e
+          echo "Checking /usr/bin/scala symlink..."
+          test -L /usr/bin/scala
+          test "$(readlink -f /usr/bin/scala)" = /usr/share/scala3/bin/scala
+
+          echo "Checking VERSION file..."
+          test -f /usr/share/scala3/VERSION
+          cat /usr/share/scala3/VERSION
+
+          echo "Checking scala-cli launcher..."
+          test -x /usr/share/scala3/libexec/scala-cli
+
+          echo "Checking maven2 directory..."
+          test -d /usr/share/scala3/maven2
+
+      - name: Test Scala Runner
+        run: scala --version
+      - name: Test the `scalac` command
+        run: scalac --version
+      - name: Test the `scaladoc` command
+        run: scaladoc --version
+
+      - name: Smoke test - compile and run
+        run: |
+          echo '@main def test() = println("Hello from Scala")' > test.scala
+          scala run --server=false test.scala
+
+      # === TEMPORARY: branch uninstall on the distro package manager ===
+      - name: Uninstall the `scala` package
+        run: |
+          if command -v dnf >/dev/null; then
+            dnf remove -y scala3
+          elif command -v zypper >/dev/null; then
+            zypper --non-interactive remove scala3
+          fi
+      # - name: Uninstall the `scala` package
+      #   run: dnf remove -y scala3
