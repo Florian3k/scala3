@@ -373,6 +373,7 @@ object language {
     /** Experimental support for single-line lambdas and case clause expressions after `:`
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
+    @deprecated("The `experimental.relaxedLambdaSyntax` language import is no longer needed since the feature is now in preview", since = "3.10")
     object relaxedLambdaSyntax
 
     /** Experimental support for safe mode
@@ -384,6 +385,13 @@ object language {
      */
     @compileTimeOnly("`dedentedStringLiterals` can only be used at compile time in import statements")
     object dedentedStringLiterals
+
+    /** Experimental support for magic (Modular AGent Interface Code), enabling extensions
+     *  for coding agents.
+     */
+    @compileTimeOnly("`magic` can only be used at compile time in import statements")
+    object magic
+
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

@@ -35,7 +35,6 @@ object Feature:
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val separationChecking = experimental("separationChecking")
-  val into = experimental("into")
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
   val multiSpreads = experimental("multiSpreads")
@@ -43,6 +42,7 @@ object Feature:
   val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
   val safe = experimental("safe")
   val dedentedStringLiterals = experimental("dedentedStringLiterals")
+  val magic = experimental("magic")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe)
@@ -80,6 +80,7 @@ object Feature:
     (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
     (safe, "Require safe mode"),
     (dedentedStringLiterals, "Enable experimental dedented string literals"),
+    (magic, "Enable extensions for working with coding agents"),
   )
 
   /** Features that are now standard; the language import / -language choice is
@@ -99,10 +100,12 @@ object Feature:
      "`experimental.namedTuples` is now standard, no language import is needed"),
     (experimental("betterFors"),
      "`experimental.betterFors` is now standard, no language import is needed"),
-    (into,
-     "The `into` language import is no longer needed; the `into` modifier is now in preview and can be enabled with the -preview flag"),
+    (experimental("into"),
+     "`experimental.into` is now standard, no language import is needed"),
     (experimental("packageObjectValues"),
      "The `experimental.packageObjectValues` language import is no longer needed; the feature is now in preview and can be enabled with the -preview flag"),
+    (experimental("relaxedLambdaSyntax"),
+     "The `experimental.relaxedLambdaSyntax` language import is no longer needed; the feature is now in preview and can be enabled with the -preview flag"),
   )
 
   /** Deprecated features that were enabled via the -language command-line setting. */
@@ -206,6 +209,11 @@ object Feature:
   def safeEnabled(using Context) =
     enabledBySetting(safe)
     || ctx.originalCompilationUnit.safeMode
+
+  /** Is magic enabled for this compilation unit? */
+  def magicEnabled(using Context) =
+    enabledBySetting(magic)
+    || ctx.originalCompilationUnit.magic
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
@@ -318,6 +326,9 @@ object Feature:
         ctx.compilationUnit.needsCaptureChecking = true
         ctx.compilationUnit.safeMode = true
         if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        true
+      case `magic` =>
+        ctx.compilationUnit.magic = true
         true
       case _ =>
         false

@@ -22,12 +22,12 @@ import dotty.tools.dotc.report
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.commons.CodeSizeEvaluator
-import scala.tools.asm.tree.*
-import scala.tools.asm.tree.analysis.*
-import scala.tools.asm.{Label, Type}
+import org.objectweb.asm
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.commons.CodeSizeEvaluator
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.tree.analysis.*
+import org.objectweb.asm.{Label, Type}
 
 object BCodeUtils {
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
@@ -178,8 +178,6 @@ object BCodeUtils {
   def isInterface(classNode: ClassNode): Boolean = (classNode.access & ACC_INTERFACE) != 0
 
   def isFinalMethod(methodNode: MethodNode): Boolean = (methodNode.access & (ACC_FINAL | ACC_PRIVATE | ACC_STATIC)) != 0
-
-  def isStrictfpMethod(methodNode: MethodNode): Boolean = (methodNode.access & ACC_STRICT) != 0
 
   def isReference(t: Type): Boolean = t.getSort == Type.OBJECT || t.getSort == Type.ARRAY
 

@@ -493,9 +493,11 @@ object Build {
     val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
     val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
     val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath
-    val asm = findArtifactPath(externalDeps, "scala-asm")
+    val asm =
+      Seq("asm", "asm-util", "asm-commons", "asm-analysis", "asm-tree")
+        .map(name => findArtifactPath(externalDeps, name))
     val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
-    Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
+    asm ++ Seq(dottyCompiler, dottyInterfaces, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
   }
 
   /** Build the `scala` input task for an aggregate project.
@@ -988,6 +990,7 @@ object Build {
       Compile / unmanagedSourceDirectories   += baseDirectory.value / "src-non-bootstrapped",
       Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
+        "-opt", "-opt-inline:**,!java.**",
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
@@ -1442,7 +1445,8 @@ object Build {
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
         Dependencies.sbtJunitInterface % Test,
-        Dependencies.asm,
+        Dependencies.asmUtil,
+        Dependencies.asmCommons,
         Dependencies.sbtCompilerInterface,
         (Dependencies.coursier % Test).cross(CrossVersion.for3Use2_13),
       ),
@@ -1551,7 +1555,7 @@ object Build {
           s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-nonbootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-nonbootstrapped` / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
@@ -1579,7 +1583,8 @@ object Build {
       Test / unmanagedResourceDirectories += baseDirectory.value / "test-resources",
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
-        Dependencies.asm,
+        Dependencies.asmUtil,
+        Dependencies.asmCommons,
         Dependencies.sbtCompilerInterface,
         Dependencies.sbtJunitInterface % Test,
         (Dependencies.coursier % Test).cross(CrossVersion.for3Use2_13),
@@ -1678,7 +1683,7 @@ object Build {
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.scalaJSScalalib=${(`scala-library-sjs` / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
           s"-Ddotty.tests.classes.dottyStaging=${(LocalProject("scala3-staging") / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.dottyTastyInspector=${(LocalProject("scala3-tasty-inspector") / Compile / packageBin).value}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
@@ -1706,6 +1711,7 @@ object Build {
       // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
       autoScalaLibrary := false,
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Test / unmanagedResourceDirectories += baseDirectory.value / "test-resources",
       Compile / resourceDirectory := baseDirectory.value / "resources",
       // Add all the necessary resource generators
       Compile / resourceGenerators ++= Seq(
@@ -2139,6 +2145,11 @@ object Build {
       regularScalaJSProjectSettings,
       bspEnabled := false,
       scalacOptions --= Seq("-Werror", "-deprecation", "-Yexplicit-nulls"),
+      // The fetched Scala.js test suite (pinned to v$scalaJSVersion) still uses
+      // the `with` type operator, which is an error since 3.10. Compile these
+      // sources under 3.9, where it is only a (non-fatal) warning. 3.9 and 3.10
+      // are otherwise identical in enabled language features.
+      scalacOptions += "-source:3.9",
 
       // Required to run Scala.js tests.
       Test / fork := false,
@@ -2291,6 +2302,7 @@ object Build {
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
             -- "OptimizerTest.scala" // something crashes the optimizer, TODO investigate
+            -- "TypedArrayConversionTest.scala" // #24321
             )).get
 
           ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
@@ -2370,7 +2382,7 @@ object Build {
           s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-bootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
           "-Ddotty.tests.classes.scalaJSScalalib=" + (`scala-library-sjs` / Compile / packageBin).value,
           "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
@@ -2609,9 +2621,9 @@ object Build {
     .settings(
       republishLibexecDir := baseDirectory.value / "libexec",
       republishCoursier +=
-        ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v$coursierJarVersion/coursier.jar"),
+        ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v${Dependencies.coursierJarVersion}/coursier.jar"),
       republishLaunchers +=
-        ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli.jar"),
+        ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli.jar"),
     )
 
   lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist
@@ -2621,7 +2633,7 @@ object Build {
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
-        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-apple-darwin.gz")
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-apple-darwin.gz")
     )
 
   lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist
@@ -2631,7 +2643,7 @@ object Build {
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
-        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-apple-darwin.gz")
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-aarch64-apple-darwin.gz")
     )
 
   lazy val `dist-win-x86_64` = project.in(file("dist/win-x86_64")).asDist
@@ -2642,10 +2654,16 @@ object Build {
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
-        ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
+        ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
     )
     .settings(
       Windows / name := "scala",
+      // Windows/packageName feeds the WiX core-feature id: WindowsPlugin truncates
+      // the sanitized id to its last 38 chars, and with the default long name
+      // (e.g. scala3-3.10.0-RC1-x86_64-pc-win32) the truncation can leave an id
+      // starting with a digit, which WiX rejects (error CNDL0014). A short stable
+      // name keeps the id legal and version-independent.
+      Windows / packageName := "scala3",
       // Windows/version is used to create ProductInfo - it requires a version without any -RC suffixes
       // If not explicitly overridden it would try to use `dottyVersion` assigned to `dist-win-x86_64/version`
       Windows / version    := developedVersion,
@@ -2668,7 +2686,7 @@ object Build {
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
-        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-linux.gz")
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-linux.gz")
     )
 
   lazy val `dist-linux-x86_64-deb` = project.in(file("dist/linux-x86_64-deb")).asDist
@@ -2750,7 +2768,7 @@ object Build {
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
-        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-pc-linux.gz")
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-aarch64-pc-linux.gz")
     )
 
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {

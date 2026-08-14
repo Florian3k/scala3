@@ -665,7 +665,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
             ModuleName(moduleName),
             attributes = Map.empty
           ),
-          version = compiler
+          VersionConstraint(compiler)
         )
         Fetch()
           .addDependencies(dep)
@@ -774,7 +774,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       if filteredSources.nonEmpty then
         val pool = JExecutors.newWorkStealingPool(threadLimit.getOrElse(Runtime.getRuntime.availableProcessors()))
         val timer = new Timer()
-        val logProgress = isInteractive && !suppressAllOutput
+        val logProgress = sourceCount > 1 && isInteractive && !suppressAllOutput
         val start = System.currentTimeMillis()
         if logProgress then
           timer.schedule((() => updateProgressMonitor(start)): TimerTask, 100/*ms*/, 200/*ms*/)
@@ -905,10 +905,10 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       def sawDiagnostic(d: Diagnostic): Unit =
         val srcpos = d.pos.nonInlined
         if srcpos.exists then
-          val key = s"${relativize(srcpos.source.file.toString())}:${srcpos.line + 1}"
+          val key = s"${relativize(srcpos.source.path)}:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key
         else
-          if !seenAt("nopos") then unexpected += relativize(srcpos.source.file.toString)
+          if !seenAt("nopos") then unexpected += relativize(srcpos.source.path)
 
       reporterWarnings.foreach(sawDiagnostic)
 
@@ -917,6 +917,14 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       (unfulfilled, unexpected.toList)
     end getMissingExpectedWarnings
   end WarnTest
+
+  // Like a WarnTest but without // warning;
+  // these tests were originally written outside of this infrastructure and lack such annotations.
+  protected class PatmatTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
+    extends Test(testSources, times, threadLimit, suppressAllOutput):
+    override def suppressErrors = true
+    override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
+      diffCheckfile(testSource, reporters, logger)
 
   protected class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
@@ -1062,7 +1070,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         case n => errorMap.put(key, n - 1); true
       def sawDiagnostic(d: Diagnostic): Unit =
         val srcpos = d.pos.nonInlined.adjustedAtEOF
-        val path = srcpos.source.file.toString
+        val path = srcpos.source.path
         if srcpos.exists then
           val key = s"$path:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key
@@ -1239,6 +1247,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     def checkWarnings()(using SummaryReporting): this.type =
       checkPass(new WarnTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput))
+
+    def checkPatmat()(using SummaryReporting): this.type =
+      checkPass(new PatmatTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput))
 
     /** Creates a "neg" test run, which makes sure that each test manages successful
      *  best-effort compilation, without any errors related to pickling/unpickling
@@ -1427,7 +1438,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     /** Compose test targets from `tests`
      *
-     *  It does this, only if all the tests are mutally compatible.
+     *  It does this, only if all the tests are mutually compatible.
      *  Otherwise it throws an `IllegalArgumentException`.
      *
      *  Grouping tests together like this allows us to take advantage of the
