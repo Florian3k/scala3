@@ -37,7 +37,7 @@ jobs:
       - name: Download the .deb from the GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO : ${{ github.repository }}
+          GH_REPO : ${{ vars.RELEASE_REPO || github.repository }}
         run: gh release download "$VERSION" --pattern "$DEB"
 
       - name: Fetch the existing packages
