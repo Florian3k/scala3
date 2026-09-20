@@ -1,0 +1,77 @@
+name: Publish the APT repository
+run-name: Publish Scala ${{ inputs.version }} to the APT repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The Scala version to publish, i.e. the release tag'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: 'The Scala version to publish, i.e. the release tag'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL   : ${{ vars.PACKAGES_BASE_URL }}
+      FINGERPRINT: ${{ vars.SCALA_PGP_FINGERPRINT }}
+      BUCKET     : ${{ vars.R2_BUCKET }}
+      VERSION    : ${{ inputs.version }}
+      DEB        : scala3-${{ inputs.version }}-x86_64-pc-linux.deb
+      AWS_ACCESS_KEY_ID               : ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY           : ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_ENDPOINT_URL                : ${{ vars.R2_ENDPOINT }}
+      AWS_DEFAULT_REGION              : auto
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    steps:
+      - name: Download the .deb from the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO : ${{ github.repository }}
+        run: gh release download "$VERSION" --pattern "$DEB"
+
+      - name: Fetch the existing packages
+        run: |
+          mkdir -p debian
+          aws s3 sync "s3://$BUCKET/debian" debian --exclude '*' --include '*.deb'
+
+      - name: Ensure the repository tooling
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dpkg-dev apt-utils
+
+      - name: Import the signing key
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd
+        with:
+          gpg_private_key: ${{ secrets.SCALA_PGP_KEY }}
+          passphrase     : ${{ secrets.SCALA_PGP_PASSPHRASE }}
+          fingerprint    : ${{ env.FINGERPRINT }}
+
+      - name: Update the APT repository
+        run: |
+          cp "$DEB" debian/
+          cat > debian/scala3.list <<EOF
+          deb [signed-by=/etc/apt/keyrings/scala3-archive-keyring.gpg] $BASE_URL/debian ./
+          EOF
+          cd debian
+          dpkg-scanpackages --multiversion . > Packages
+          gzip -k -f Packages
+          apt-ftparchive release . > Release
+          gpg --batch --yes --local-user "$FINGERPRINT" -abs        -o Release.gpg Release
+          gpg --batch --yes --local-user "$FINGERPRINT" --clearsign -o InRelease  Release
+
+      - name: Publish the public half of the signing key
+        run: gpg --armor --export "$FINGERPRINT" > KEY.gpg
+
+      - name: Upload to R2
+        run: |
+          aws s3 cp KEY.gpg "s3://$BUCKET/KEY.gpg"
+          aws s3 sync debian "s3://$BUCKET/debian"
